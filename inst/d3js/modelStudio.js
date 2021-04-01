@@ -18,10 +18,15 @@ var obsData = data[0],
     fdData = data[4],
     tvData = data[4], atData = data[5];
 
+// Fix parse error for only one variable model
+const checkVarCounts = function(variable_names){
+  return Array.isArray(variable_names) ? variable_names : variable_names.split(",")
+}
+
 /// load options
 var TIME = options.time,
     modelName = options.model_name,
-    variableNames = options.variable_names,
+    variableNames = checkVarCounts(options.variable_names),
     dim = options.facet_dim,
     versionText = options.version_text,
     measureText = options.measure_text,

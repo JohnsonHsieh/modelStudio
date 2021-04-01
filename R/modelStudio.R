@@ -256,8 +256,18 @@ modelStudio.explainer <- function(explainer,
   is_y <- is_y_in_data(data, y)
   potential_variable_names <- names(is_y[!is_y])
   variable_names <- intersect(potential_variable_names, colnames(new_observation))
+  
+  # Fix parse error for only one variable model
   ## get rid of target in data
-  data <- data[,!is_y]
+  data <- subset(data, select = which(!is_y))
+  is_only_one_x <- ifelse(ncol(data)==1, TRUE, FALSE)
+  
+  which_numerical <- which_variables_are_numeric(data)
+  if(is_only_one_x){
+    names_y <- ifelse(length(names(is_y[is_y]))==0, "__y__", names(is_y[is_y]))
+    data[[names_y]] <- y
+    new_observation[[names_y]] <- new_observation_y
+  }
 
   obs_count <- dim(new_observation)[1]
   obs_data <- new_observation
@@ -283,8 +293,6 @@ modelStudio.explainer <- function(explainer,
         loss_function = loss_function
         ),
     "ingredients::feature_importance", show_info, pb, 2*B_fi)
-
-  which_numerical <- which_variables_are_numeric(data)
 
   ## because aggregate_profiles calculates numerical OR categorical
   if (all(which_numerical)) {
@@ -369,9 +377,19 @@ modelStudio.explainer <- function(explainer,
         iBreakDown::local_attributions(
           model, data, predict_function, new_observation, label = label),
         paste0("iBreakDown::local_attributions (", i, ")      "), show_info, pb, 2)
-      sv <- calculate(
-        iBreakDown::shap(
-          model, data, predict_function, new_observation, label = label, B = B),
+      sv <- calculate({
+        if(is_only_one_x){            # Fix parse error for only one variable model
+          new_observation[["__one__"]] <- 1
+          sv_tmp <- iBreakDown::shap(model, data, predict_function, new_observation, label = label, B = B)
+          sv <- subset(sv_tmp, variable_name!="__one__")
+          row_names <- attr(sv, "row.names")
+          attributes(sv) <- attributes(sv_tmp)
+          attr(sv, "row.names") <- row_names
+          sv
+        }else{
+          iBreakDown::shap(model, data, predict_function, new_observation, label = label, B = B)
+        }
+      },
         paste0("iBreakDown::shap (", i, ")                    "), show_info, pb, 3*B)
       cp <- calculate(
         ingredients::ceteris_paribus(
@@ -409,9 +427,19 @@ modelStudio.explainer <- function(explainer,
         iBreakDown::local_attributions(
           model, data, predict_function, new_observation, label = label),
         paste0("iBreakDown::local_attributions (", i, ")      "), show_info, pb, 2)
-      sv <- calculate(
-        iBreakDown::shap(
-          model, data, predict_function, new_observation, label = label, B = B),
+      sv <- calculate({
+        if(is_only_one_x){            # Fix parse error for only one variable model
+          new_observation[["__one__"]] <- 1
+          sv_tmp <- iBreakDown::shap(model, data, predict_function, new_observation, label = label, B = B)
+          sv <- subset(sv_tmp, variable_name!="__one__")
+          row_names <- attr(sv, "row.names")
+          attributes(sv) <- attributes(sv_tmp)
+          attr(sv, "row.names") <- row_names
+          sv
+        }else{
+          iBreakDown::shap(model, data, predict_function, new_observation, label = label, B = B)
+        }
+      },
         paste0("iBreakDown::shap (", i, ")                    "), show_info, pb, 3*B)
       cp <- calculate(
         ingredients::ceteris_paribus(
